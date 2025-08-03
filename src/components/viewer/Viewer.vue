@@ -89,6 +89,7 @@ import EditFileIcon from 'vue-material-design-icons/FileEdit.vue';
 import AlbumRemoveIcon from 'vue-material-design-icons/BookRemove.vue';
 import AlbumIcon from 'vue-material-design-icons/ImageAlbum.vue';
 import RotateLeftIcon from 'vue-material-design-icons/RotateLeft.vue';
+import CheckCircleIcon from 'vue-material-design-icons/CheckCircle.vue';
 
 type IViewerAction = {
   /** Identifier (optional) */
@@ -231,6 +232,16 @@ export default defineComponent({
     /** Get all actions to show */
     actions(): IViewerAction[] {
       return [
+        {
+          id: 'select',
+          name: this.t('memories', 'Select'),
+          icon: CheckCircleIcon,
+          iconArgs: {
+            class: this.currentPhoto?.flag & this.c.FLAG_SELECTED ? 'selected' : '',
+          },
+          callback: this.selectCurrent,
+          if: true,
+        },
         {
           id: 'share',
           name: this.t('memories', 'Share'),
@@ -698,6 +709,22 @@ export default defineComponent({
 
       // Remove fragment if closed
       if (!this.isOpen) {
+        const fragments = utils.fragment.list;
+        const hasSelection = fragments.some((f) => f.type === utils.fragment.types.selection);
+
+        // We selected some photos while using the viewer.
+        if (hasSelection) {
+          // Keep the selection by replacing the route.
+          const newFragments = fragments.filter((f) => f.type !== utils.fragment.types.viewer);
+          const hash = utils.fragment.encode(newFragments);
+
+          return _m.router.replace({
+            path: _m.route.path,
+            query: _m.route.query,
+            hash: hash,
+          });
+        }
+
         return utils.fragment.pop(utils.fragment.types.viewer);
       }
     },
@@ -1034,12 +1061,23 @@ export default defineComponent({
     keydown(e: KeyboardEvent) {
       if (e.defaultPrevented) return;
 
+      if (e.key == ' ') {
+        this.selectCurrent();
+      }
+
       if (e.key === 'Delete') {
         this.deleteCurrent();
       }
 
       if (e.key === 'Tab') {
         this.photoswipe?.element?.classList.add('pswp--ui-visible');
+      }
+    },
+
+    /** Select the current photo */
+    selectCurrent() {
+      if (this.currentPhoto) {
+        _m.selectionManager.selectPhoto(this.currentPhoto, true);
       }
     },
 
